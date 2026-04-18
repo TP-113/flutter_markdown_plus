@@ -474,7 +474,7 @@ class MarkdownBuilder implements md.NodeVisitor {
           child: child,
         );
       } else if (tag == 'hr') {
-        child = Container(decoration: styleSheet.horizontalRuleDecoration);
+        child = builders.containsKey('hr') ? child : Container(decoration: styleSheet.horizontalRuleDecoration);
       }
 
       _addBlockChild(child);
