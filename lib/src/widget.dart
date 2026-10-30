@@ -225,6 +225,7 @@ abstract class MarkdownWidget extends StatefulWidget {
     this.fitContent = false,
     this.listItemCrossAxisAlignment = MarkdownListItemCrossAxisAlignment.baseline,
     this.softLineBreak = false,
+    this.textMouseCursor,
   });
 
   /// The Markdown to display.
@@ -325,6 +326,13 @@ abstract class MarkdownWidget extends StatefulWidget {
   /// specification on soft line breaks when lines of text are joined.
   final bool softLineBreak;
 
+  /// The mouse cursor shown while hovering over the glyphs of non-link text.
+  ///
+  /// Useful when the Markdown is wrapped in a [SelectionArea], which does not
+  /// change the cursor by itself. Links keep their own cursor. If null, the
+  /// cursor is not changed.
+  final MouseCursor? textMouseCursor;
+
   /// Subclasses should override this function to display the given children,
   /// which are the parsed representation of [data].
   @protected
@@ -347,7 +355,9 @@ class _MarkdownWidgetState extends State<MarkdownWidget> implements MarkdownBuil
   @override
   void didUpdateWidget(MarkdownWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.data != oldWidget.data || widget.styleSheet != oldWidget.styleSheet) {
+    if (widget.data != oldWidget.data ||
+        widget.styleSheet != oldWidget.styleSheet ||
+        widget.textMouseCursor != oldWidget.textMouseCursor) {
       _parseMarkdown();
     }
   }
@@ -392,6 +402,7 @@ class _MarkdownWidgetState extends State<MarkdownWidget> implements MarkdownBuil
       onSelectionChanged: widget.onSelectionChanged,
       onTapText: widget.onTapText,
       softLineBreak: widget.softLineBreak,
+      textMouseCursor: widget.textMouseCursor,
     );
 
     _children = builder.build(astNodes);
@@ -430,7 +441,16 @@ class _MarkdownWidgetState extends State<MarkdownWidget> implements MarkdownBuil
   }
 
   @override
-  Widget build(BuildContext context) => widget.build(context, _children);
+  Widget build(BuildContext context) {
+    final Widget child = widget.build(context, _children);
+    if (widget.textMouseCursor == null) {
+      return child;
+    }
+    // Inside a SelectionArea, Text shows the text cursor over its whole box.
+    // Defer it so that only the glyphs (via TextSpan.mouseCursor) change the
+    // cursor.
+    return DefaultSelectionStyle.merge(mouseCursor: MouseCursor.defer, child: child);
+  }
 }
 
 /// A non-scrolling widget that parses and displays Markdown.
@@ -467,6 +487,7 @@ class MarkdownBody extends MarkdownWidget {
     this.shrinkWrap = true,
     super.fitContent = true,
     super.softLineBreak,
+    super.textMouseCursor,
   });
 
   /// If [shrinkWrap] is `true`, [MarkdownBody] will take the minimum height
@@ -523,6 +544,7 @@ class Markdown extends MarkdownWidget {
     this.physics,
     this.shrinkWrap = false,
     super.softLineBreak,
+    super.textMouseCursor,
   });
 
   /// The amount of space by which to inset the children.
