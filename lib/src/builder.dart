@@ -115,6 +115,7 @@ class MarkdownBuilder implements md.NodeVisitor {
     this.onSelectionChanged,
     this.onTapText,
     this.softLineBreak = false,
+    this.textMouseCursor,
   });
 
   /// A delegate that controls how link and `pre` elements behave.
@@ -168,6 +169,11 @@ class MarkdownBuilder implements md.NodeVisitor {
   /// Default these spaces are removed in accordance with the Markdown
   /// specification on soft line breaks when lines of text are joined.
   final bool softLineBreak;
+
+  /// The mouse cursor shown while hovering over the glyphs of non-link text.
+  ///
+  /// Links keep their own cursor. If null, the cursor is not changed.
+  final MouseCursor? textMouseCursor;
 
   final List<String> _listIndents = <String>[];
   final List<_BlockElement> _blocks = <_BlockElement>[];
@@ -980,6 +986,9 @@ class MarkdownBuilder implements md.NodeVisitor {
   Widget _buildRichText(TextSpan text, {TextAlign? textAlign, String? key}) {
     //Adding a unique key prevents the problem of using the same link handler for text spans with the same text
     final Key k = key == null ? UniqueKey() : Key(key);
+    if (textMouseCursor != null) {
+      text = _withTextMouseCursor(text, textMouseCursor!);
+    }
     if (selectable) {
       return SelectableText.rich(
         text,
@@ -1001,6 +1010,27 @@ class MarkdownBuilder implements md.NodeVisitor {
       );
     }
   }
+}
+
+/// Returns a copy of [span] whose non-link spans use [cursor].
+///
+/// [RenderParagraph] only hit tests the leaf span under the pointer, so the
+/// cursor has to be set on every span rather than only on the root.
+TextSpan _withTextMouseCursor(TextSpan span, MouseCursor cursor) {
+  return TextSpan(
+    text: span.text,
+    children: span.children
+        ?.map((InlineSpan child) => child is TextSpan ? _withTextMouseCursor(child, cursor) : child)
+        .toList(),
+    style: span.style,
+    recognizer: span.recognizer,
+    mouseCursor: span.recognizer == null ? cursor : span.mouseCursor,
+    onEnter: span.onEnter,
+    onExit: span.onExit,
+    semanticsLabel: span.semanticsLabel,
+    locale: span.locale,
+    spellOut: span.spellOut,
+  );
 }
 
 class _ScrollControllerBuilder extends StatefulWidget {
